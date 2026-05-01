@@ -30,9 +30,3 @@ https://www.kaggle.com/datasets/snap/amazon-fine-food-reviews
 ### Tools & Libraries
 Python · NLTK · TextBlob · Scikit-learn · Pandas · Matplotlib · Seaborn · WordCloud
 """
-
-print(readme_content)
-
-with open('README.md', 'w') as f:
-    f.write(readme_content)
-print("\nREADME.md saved! Upload this to your GitHub repo.")
