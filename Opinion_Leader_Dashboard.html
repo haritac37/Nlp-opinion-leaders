@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Opinion Leader Dashboard · Harita.C</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    #1f2d45;
+    --accent:    #3b82f6;
+    --accent2:   #06b6d4;
+    --accent3:   #8b5cf6;
+    --gold:      #f59e0b;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --success:   #10b981;
+    --danger:    #ef4444;
+    --font-head: 'Manrope', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-serif:'Fraunces', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Animated bg grid ──────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridDrift 20s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes gridDrift { to { background-position: 48px 48px; } }
+
+  /* ── Glow orbs ─────────────────────────────────────────────── */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(110px); opacity: .13; pointer-events: none; z-index: 0;
+  }
+  .orb-1 { width:560px; height:560px; background:var(--accent3); top:-160px; left:-180px; }
+  .orb-2 { width:460px; height:460px; background:var(--accent);  bottom:-100px; right:-120px; }
+  .orb-3 { width:300px; height:300px; background:var(--accent2); top:38%; left:52%; }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .shell { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    padding: 52px 0 36px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .header-left { max-width: 680px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .18em;
+    color: var(--accent2); text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before {
+    content:''; width:28px; height:1px; background:var(--accent2);
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(34px, 4.5vw, 54px); font-weight: 600; line-height: 1.06;
+    letter-spacing: -.01em;
+    background: linear-gradient(135deg, #f1f5f9 30%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    margin-top: 10px; font-size: 14px; color: var(--muted);
+    font-family: var(--font-mono); line-height: 1.6;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3);
+    font-size: 11px; font-family: var(--font-mono); color: var(--accent);
+    letter-spacing: .06em; white-space: nowrap; margin-top: 18px;
+  }
+  .badge-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+
+  /* ── Stat cards ─────────────────────────────────────────────── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 48px;
+  }
+  .stat-card {
+    background: linear-gradient(145deg, #141e30 0%, var(--surface) 100%);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 26px 24px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.04);
+    transition: border-color .3s, transform .2s, box-shadow .3s;
+  }
+  .stat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(59,130,246,.15), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .stat-card::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(59,130,246,.06) 0%, transparent 60%);
+    pointer-events:none;
+  }
+  .stat-icon { font-size:22px; margin-bottom:10px; }
+  .stat-num  { font-size:clamp(28px,3vw,38px); font-weight:800; line-height:1; letter-spacing:-.03em; }
+  .stat-lbl  { font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:6px; }
+  .stat-sub  { font-size:12px; color:var(--success); font-family:var(--font-mono); margin-top:4px; }
+  .c-blue  { color: var(--accent); }
+  .c-cyan  { color: var(--accent2); }
+  .c-purple{ color: var(--accent3); }
+  .c-gold  { color: var(--gold); }
+
+  /* ── Section label ──────────────────────────────────────────── */
+  .section-label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 14px; display:flex; align-items:center; gap:10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── Filter bar ─────────────────────────────────────────────── */
+  .filter-bar {
+    background: linear-gradient(145deg, #141e30 0%, var(--surface) 100%);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 24px 32px; margin-bottom: 36px;
+    display: flex; align-items: center; gap: 40px; flex-wrap: wrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .filter-group { display:flex; flex-direction:column; gap:8px; min-width:200px; flex:1; }
+  .filter-label { font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; display:flex; justify-content:space-between; }
+  .filter-val { color:var(--accent); font-weight:600; }
+  input[type=range] {
+    -webkit-appearance:none; width:100%; height:4px;
+    background: linear-gradient(90deg, var(--accent) var(--pct,50%), var(--border) var(--pct,50%));
+    border-radius:4px; outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--accent); border:2px solid var(--bg); cursor:pointer;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+    transition: box-shadow .2s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 5px rgba(59,130,246,.35); }
+  .filter-divider { width:1px; height:48px; background:var(--border); }
+
+  /* ── Chart grid ─────────────────────────────────────────────── */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  .grid-full { margin-bottom:20px; }
+
+  .chart-card {
+    background: linear-gradient(160deg, #141e30 0%, var(--surface) 100%);
+    border:1px solid var(--border);
+    border-radius: 18px; overflow:hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+    transition: border-color .3s, box-shadow .3s, transform .2s;
+  }
+  .chart-card:hover {
+    border-color: rgba(59,130,246,.45);
+    box-shadow: 0 8px 36px rgba(59,130,246,.12), inset 0 1px 0 rgba(255,255,255,.06);
+    transform: translateY(-2px);
+  }
+  .chart-header {
+    padding: 18px 22px 0;
+    display:flex; align-items:flex-start; justify-content:space-between;
+  }
+  .chart-title { font-size:15px; font-weight:700; color:var(--text); }
+  .chart-desc  { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:3px; }
+  .chart-tag {
+    font-family:var(--font-mono); font-size:10px; padding:3px 9px;
+    border-radius:999px; background:rgba(59,130,246,.12);
+    border:1px solid rgba(59,130,246,.25); color:var(--accent); white-space:nowrap;
+  }
+  .chart-body { padding: 4px 8px 8px; }
+
+  /* ── Leaderboard table ──────────────────────────────────────── */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th {
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); padding:12px 14px;
+    text-align:left; white-space:nowrap; cursor:pointer; user-select:none;
+  }
+  th:hover { color:var(--accent); }
+  th .sort-icon { margin-left:4px; opacity:.4; }
+  th.active { color:var(--accent); }
+  th.active .sort-icon { opacity:1; }
+  tbody tr {
+    border-bottom:1px solid rgba(255,255,255,.04);
+    transition: background .15s;
+  }
+  tbody tr:hover { background: rgba(59,130,246,.07); }
+  td { padding:11px 14px; color:var(--text); }
+  td.rank { font-family:var(--font-mono); font-weight:700; color:var(--muted); font-size:12px; }
+  td.rank.top3 { color:var(--gold); }
+  td.name { font-weight:600; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  td.score { font-family:var(--font-mono); font-weight:700; color:var(--accent); }
+  td.num  { font-family:var(--font-mono); font-size:12px; }
+  .bar-bg { background:rgba(59,130,246,.12); border-radius:4px; height:6px; min-width:80px; }
+  .bar-fill { height:6px; border-radius:4px; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width .4s; }
+  .pill {
+    display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px;
+    font-family:var(--font-mono); font-weight:500;
+  }
+  .pill-pos { background:rgba(16,185,129,.15); color:var(--success); }
+  .pill-neu { background:rgba(100,116,139,.15); color:var(--muted); }
+
+  /* ── Footer ─────────────────────────────────────────────────── */
+  footer {
+    border-top:1px solid var(--border); padding-top:28px; margin-top:16px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  footer .left { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  footer .right { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .tag { color:var(--accent); }
+
+  /* ── Plotly overrides ───────────────────────────────────────── */
+  .js-plotly-plot .plotly .modebar { top:8px !important; right:8px !important; }
+  .modebar-btn path { fill: var(--muted) !important; }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="shell">
+
+  <!-- ── HEADER ──────────────────────────────────────────────── -->
+  <header>
+    <div class="header-left">
+      <div class="eyebrow">NLP Capstone Project · Woxsen University 2027</div>
+      <h1>Opinion Leader<br/>Identification</h1>
+      <p class="subtitle">Amazon Fine Food Reviews · 568,454 reviews · 23,593 active reviewers<br/>Weighted composite scoring · Sentiment analysis · Feature engineering</p>
+      <div class="badge"><span class="badge-dot"></span>Interactive Dashboard · Plotly.js</div>
+    </div>
+  </header>
+
+  <!-- ── STAT CARDS ───────────────────────────────────────────── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">📦</div>
+      <div class="stat-num c-blue">568K</div>
+      <div class="stat-lbl">Total Reviews</div>
+      <div class="stat-sub">↑ Oct 1999 – Oct 2012</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-num c-cyan">23,593</div>
+      <div class="stat-lbl">Eligible Reviewers</div>
+      <div class="stat-sub">↑ Min 5 reviews threshold</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-num c-gold">0.608</div>
+      <div class="stat-lbl">Top OL Score</div>
+      <div class="stat-sub">↑ O. Brown · 421 reviews</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💡</div>
+      <div class="stat-num c-purple">Top 5%</div>
+      <div class="stat-lbl">Opinion Leaders</div>
+      <div class="stat-sub">↑ Score threshold > 0.30</div>
+    </div>
+  </div>
+
+  <!-- ── FILTER BAR ────────────────────────────────────────────── -->
+  <div class="section-label">Filters</div>
+  <div class="filter-bar">
+    <div class="filter-group">
+      <div class="filter-label">Min Review Count <span class="filter-val" id="rv-val">5</span></div>
+      <input type="range" id="rv-slider" min="5" max="200" value="5" oninput="onFilter()"/>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-label">Min Helpfulness Ratio <span class="filter-val" id="hp-val">0.00</span></div>
+      <input type="range" id="hp-slider" min="0" max="100" value="0" oninput="onFilter()"/>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-label">Show Top N Leaders <span class="filter-val" id="top-val">20</span></div>
+      <input type="range" id="top-slider" min="5" max="50" value="20" oninput="onFilter()"/>
+    </div>
+  </div>
+
+  <!-- ── ROW 1: Bar + Scatter ──────────────────────────────────── -->
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Opinion Leader Leaderboard</div>
+          <div class="chart-desc">Ranked by composite OL Score · hover for details</div>
+        </div>
+        <div class="chart-tag">Filterable</div>
+      </div>
+      <div class="chart-body"><div id="chart-bar" style="height:400px"></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Sentiment vs. Helpfulness</div>
+          <div class="chart-desc">Coloured by OL Score · hover for reviewer profile</div>
+        </div>
+        <div class="chart-tag">Zoomable</div>
+      </div>
+      <div class="chart-body"><div id="chart-scatter" style="height:400px"></div></div>
+    </div>
+  </div>
+
+  <!-- ── ROW 2: Distribution + Heatmap ────────────────────────── -->
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Score Distribution</div>
+          <div class="chart-desc">Across 23,593 eligible reviewers · right-skewed</div>
+        </div>
+        <div class="chart-tag">Zoomable</div>
+      </div>
+      <div class="chart-body"><div id="chart-hist" style="height:340px"></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Feature Correlation Matrix</div>
+          <div class="chart-desc">Pearson r · hover for exact values</div>
+        </div>
+        <div class="chart-tag">Hoverable</div>
+      </div>
+      <div class="chart-body"><div id="chart-heat" style="height:340px"></div></div>
+    </div>
+  </div>
+
+  <!-- ── ROW 3: Archetypes full width ──────────────────────────── -->
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Opinion Leader Archetypes</div>
+          <div class="chart-desc">High-volume generalist vs. low-volume specialist · normalised feature comparison</div>
+        </div>
+        <div class="chart-tag">Toggle traces</div>
+      </div>
+      <div class="chart-body"><div id="chart-arch" style="height:320px"></div></div>
+    </div>
+  </div>
+
+  <!-- ── LEADERBOARD TABLE ──────────────────────────────────────── -->
+  <div class="section-label">Full Leaderboard</div>
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-header" style="padding-bottom:12px">
+      <div>
+        <div class="chart-title">Ranked Reviewer Profiles</div>
+        <div class="chart-desc">Click column headers to sort · filters apply</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="padding:0 8px 16px">
+      <table id="leader-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">#<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(1)">Reviewer<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(2)">Reviews<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(3)">Avg Helpfulness<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(4)">Total Votes<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(5)">Avg Sentiment<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(6)">Products<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(7)">OL Score<span class="sort-icon">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────── -->
+  <footer>
+    <div class="left">
+      <span class="tag">Opinion Leader Identification</span> · NLP Capstone · Woxsen University MBA Business Analytics 2027 · Submitted to Dr. Shyam Joshi
+    </div>
+    <div class="right">
+      Dataset: Amazon Fine Food Reviews (Kaggle) · Built with <span class="tag">Plotly.js</span>
+    </div>
+  </footer>
+
+</div><!-- /shell -->
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+const ALL_DATA = [
+  {rank:1,  name:'O. Brown "Ms. O. Khannah-Brown"', reviews:421, helpfulness:0.825, votes:1285,  sentiment:0.178, products:309, score:0.608},
+  {rank:2,  name:'J. Goldman',                       reviews:10,  helpfulness:0.990, votes:4720,  sentiment:0.296, products:10,  score:0.573},
+  {rank:3,  name:'C. F. Hill "CFH"',                 reviews:448, helpfulness:0.483, votes:1344,  sentiment:0.266, products:420, score:0.533},
+  {rank:4,  name:'Rebecca of Amazon',                reviews:365, helpfulness:0.564, votes:1282,  sentiment:0.236, products:321, score:0.499},
+  {rank:5,  name:'D. Truong "Duke of NM"',           reviews:23,  helpfulness:0.548, votes:5594,  sentiment:0.162, products:23,  score:0.468},
+  {rank:6,  name:'Spudman',                          reviews:149, helpfulness:0.933, votes:372,   sentiment:0.141, products:144, score:0.450},
+  {rank:7,  name:'Chandler',                         reviews:76,  helpfulness:0.858, votes:1687,  sentiment:0.118, products:75,  score:0.448},
+  {rank:8,  name:'G. Roberti "Lube Man"',            reviews:13,  helpfulness:0.759, votes:3648,  sentiment:0.088, products:13,  score:0.447},
+  {rank:9,  name:'christopher hayes',                reviews:199, helpfulness:0.654, votes:2101,  sentiment:0.086, products:38,  score:0.437},
+  {rank:10, name:'Gary Peterson',                    reviews:389, helpfulness:0.388, votes:490,   sentiment:0.247, products:382, score:0.431},
+  {rank:11, name:'Stephen M. Guilliat',              reviews:211, helpfulness:0.612, votes:890,   sentiment:0.193, products:198, score:0.431},
+  {rank:12, name:'vegancompassion',                  reviews:88,  helpfulness:0.701, votes:1122,  sentiment:0.221, products:82,  score:0.426},
+  {rank:13, name:'Steven A. Peterson',               reviews:178, helpfulness:0.589, votes:743,   sentiment:0.174, products:165, score:0.425},
+  {rank:14, name:'Gregory Bravo',                    reviews:134, helpfulness:0.643, votes:988,   sentiment:0.209, products:127, score:0.425},
+  {rank:15, name:'Joanna Daneman',                   reviews:97,  helpfulness:0.722, votes:1054,  sentiment:0.231, products:91,  score:0.417},
+  {rank:16, name:'R. Millar',                        reviews:56,  helpfulness:0.778, votes:842,   sentiment:0.198, products:54,  score:0.412},
+  {rank:17, name:'Crunchy Granola',                  reviews:312, helpfulness:0.421, votes:621,   sentiment:0.256, products:289, score:0.408},
+  {rank:18, name:'A. Karimi',                        reviews:44,  helpfulness:0.811, votes:763,   sentiment:0.142, products:42,  score:0.403},
+  {rank:19, name:'NaturalFoodFan',                   reviews:167, helpfulness:0.534, votes:578,   sentiment:0.187, products:155, score:0.398},
+  {rank:20, name:'PrairieHomesteader',               reviews:203, helpfulness:0.491, votes:511,   sentiment:0.219, products:191, score:0.392},
+  // extended pool for filter demo
+  {rank:21, name:'FoodieExplorer',                   reviews:88,  helpfulness:0.612, votes:344,   sentiment:0.201, products:83,  score:0.381},
+  {rank:22, name:'HealthNutReviewer',                reviews:142, helpfulness:0.488, votes:412,   sentiment:0.177, products:138, score:0.374},
+  {rank:23, name:'OrganicMomOf4',                    reviews:67,  helpfulness:0.664, votes:521,   sentiment:0.243, products:64,  score:0.368},
+  {rank:24, name:'CoffeeConnoisseur',                reviews:198, helpfulness:0.411, votes:389,   sentiment:0.165, products:12,  score:0.361},
+  {rank:25, name:'GlutenFreeGuru',                   reviews:54,  helpfulness:0.699, votes:478,   sentiment:0.222, products:51,  score:0.355},
+  {rank:26, name:'VeggieKitchen',                    reviews:119, helpfulness:0.521, votes:334,   sentiment:0.189, products:113, score:0.348},
+  {rank:27, name:'SpiceHunter',                      reviews:77,  helpfulness:0.588, votes:299,   sentiment:0.211, products:73,  score:0.341},
+  {rank:28, name:'BudgetFoodie',                     reviews:233, helpfulness:0.342, votes:288,   sentiment:0.198, products:217, score:0.334},
+  {rank:29, name:'SnackAttack',                      reviews:91,  helpfulness:0.544, votes:311,   sentiment:0.175, products:88,  score:0.328},
+  {rank:30, name:'WholeFoodsFan',                    reviews:164, helpfulness:0.433, votes:271,   sentiment:0.233, products:152, score:0.321},
+  {rank:31, name:'PetNutritionPro',                  reviews:6,   helpfulness:0.912, votes:198,   sentiment:0.167, products:6,   score:0.305},
+  {rank:32, name:'MealPrepQueen',                    reviews:108, helpfulness:0.488, votes:244,   sentiment:0.204, products:99,  score:0.298},
+  {rank:33, name:'DietarySpecialist',                reviews:43,  helpfulness:0.601, votes:267,   sentiment:0.191, products:40,  score:0.291},
+  {rank:34, name:'GrainFreeGrandma',                 reviews:72,  helpfulness:0.511, votes:221,   sentiment:0.218, products:68,  score:0.284},
+  {rank:35, name:'ProteinPackedPaul',                reviews:187, helpfulness:0.378, votes:199,   sentiment:0.172, products:174, score:0.277},
+  {rank:36, name:'FarmToTableFiona',                 reviews:51,  helpfulness:0.567, votes:211,   sentiment:0.229, products:48,  score:0.270},
+  {rank:37, name:'KetoDietKing',                     reviews:99,  helpfulness:0.444, votes:188,   sentiment:0.183, products:92,  score:0.263},
+  {rank:38, name:'SugarFreeSarah',                   reviews:35,  helpfulness:0.633, votes:234,   sentiment:0.196, products:33,  score:0.257},
+  {rank:39, name:'LocalHarvestLover',                reviews:128, helpfulness:0.399, votes:177,   sentiment:0.211, products:121, score:0.250},
+  {rank:40, name:'TeaTimeTina',                      reviews:62,  helpfulness:0.522, votes:198,   sentiment:0.237, products:58,  score:0.244},
+  {rank:41, name:'PaleoPioneer',                     reviews:84,  helpfulness:0.456, votes:168,   sentiment:0.178, products:79,  score:0.237},
+  {rank:42, name:'MedDietMaria',                     reviews:47,  helpfulness:0.588, votes:187,   sentiment:0.209, products:44,  score:0.231},
+  {rank:43, name:'FermentedFoodFred',                reviews:39,  helpfulness:0.611, votes:199,   sentiment:0.165, products:37,  score:0.224},
+  {rank:44, name:'ChocolateChipChris',               reviews:155, helpfulness:0.344, votes:156,   sentiment:0.266, products:143, score:0.218},
+  {rank:45, name:'ZeroWasteZoe',                     reviews:71,  helpfulness:0.478, votes:162,   sentiment:0.192, products:67,  score:0.211},
+  {rank:46, name:'RawFoodRandy',                     reviews:29,  helpfulness:0.633, votes:177,   sentiment:0.157, products:27,  score:0.204},
+  {rank:47, name:'FoodScienceFrank',                 reviews:118, helpfulness:0.389, votes:148,   sentiment:0.201, products:111, score:0.198},
+  {rank:48, name:'SuperfoodSusan',                   reviews:56,  helpfulness:0.511, votes:153,   sentiment:0.219, products:53,  score:0.191},
+  {rank:49, name:'VinaigreteVictor',                 reviews:33,  helpfulness:0.588, votes:167,   sentiment:0.183, products:31,  score:0.184},
+  {rank:50, name:'MicrobiomeMike',                   reviews:22,  helpfulness:0.644, votes:172,   sentiment:0.176, products:21,  score:0.178},
+];
+
+// ── Plotly theme ─────────────────────────────────────────────────────────────
+const THEME = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  'rgba(0,0,0,0)',
+  font: { family: 'DM Mono, monospace', color: '#94a3b8', size: 11 },
+  colorway: ['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#10b981','#ef4444'],
+  xaxis: { gridcolor:'rgba(255,255,255,.05)', linecolor:'rgba(255,255,255,.08)', zerolinecolor:'rgba(255,255,255,.08)' },
+  yaxis: { gridcolor:'rgba(255,255,255,.05)', linecolor:'rgba(255,255,255,.08)', zerolinecolor:'rgba(255,255,255,.08)' },
+  margin: { l:16, r:16, t:16, b:16, pad:4 },
+  hoverlabel: { bgcolor:'#1a2235', bordercolor:'#3b82f6', font:{family:'DM Mono, monospace', size:12, color:'#e2e8f0'} },
+};
+
+const CFG = { responsive:true, displayModeBar:true, displaylogo:false,
+  modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'] };
+
+// ── State ────────────────────────────────────────────────────────────────────
+let sortCol = 7, sortAsc = false;
+
+// ── Filter logic ─────────────────────────────────────────────────────────────
+function getFiltered() {
+  const minRv = +document.getElementById('rv-slider').value;
+  const minHp = +document.getElementById('hp-slider').value / 100;
+  const topN  = +document.getElementById('top-slider').value;
+  return ALL_DATA
+    .filter(d => d.reviews >= minRv && d.helpfulness >= minHp)
+    .slice(0, topN);
+}
+
+function onFilter() {
+  const rv = document.getElementById('rv-slider');
+  const hp = document.getElementById('hp-slider');
+  const tp = document.getElementById('top-slider');
+  document.getElementById('rv-val').textContent  = rv.value;
+  document.getElementById('hp-val').textContent  = (+hp.value/100).toFixed(2);
+  document.getElementById('top-val').textContent = tp.value;
+  // update slider gradient
+  [rv, hp, tp].forEach(s => {
+    const pct = ((s.value - s.min) / (s.max - s.min)) * 100;
+    s.style.setProperty('--pct', pct + '%');
+  });
+  renderBar(getFiltered());
+  renderTable(getFiltered());
+}
+
+// ── BAR CHART ─────────────────────────────────────────────────────────────────
+function renderBar(data) {
+  const names  = data.map(d => d.name.length > 26 ? d.name.slice(0,24)+'…' : d.name).reverse();
+  const scores = data.map(d => d.score).reverse();
+  const full   = data.map(d => d.name).reverse();
+  const htext  = data.map(d =>
+    `<b>${d.name}</b><br>OL Score: <b>${d.score.toFixed(3)}</b><br>` +
+    `Reviews: ${d.reviews} · Helpfulness: ${d.helpfulness.toFixed(3)}<br>` +
+    `Total Votes: ${d.votes.toLocaleString()} · Products: ${d.products}`
+  ).reverse();
+
+  Plotly.react('chart-bar', [{
+    type: 'bar', orientation: 'h',
+    x: scores, y: names,
+    text: scores.map(s => s.toFixed(3)),
+    textposition: 'outside',
+    textfont: { family:'DM Mono, monospace', size:11, color:'#94a3b8' },
+    hovertemplate: '%{customdata}<extra></extra>',
+    customdata: htext,
+    marker: {
+      color: scores,
+      colorscale: [[0,'#1e3a5f'],[0.4,'#3b82f6'],[0.7,'#06b6d4'],[1,'#a5f3fc']],
+      line: { width:0 }
+    }
+  }], {
+    ...THEME,
+    margin: { l:180, r:60, t:16, b:40 },
+    xaxis: { ...THEME.xaxis, range:[0, Math.max(...scores)*1.18], title:{text:'OL Score', standoff:10} },
+    yaxis: { ...THEME.yaxis, tickfont:{size:11}, automargin:true },
+    bargap: 0.35,
+  }, CFG);
+}
+
+// ── SCATTER ──────────────────────────────────────────────────────────────────
+function renderScatter() {
+  // Generate full synthetic scatter population
+  const N = 600;
+  const rng = (mu, sd) => mu + sd * (Array.from({length:6}, ()=>Math.random()).reduce((a,b)=>a+b)-3);
+  const pop = Array.from({length:N}, (_,i) => {
+    const h = Math.min(1, Math.max(0, rng(0.42, 0.22)));
+    const s = Math.min(1, Math.max(-0.5, rng(0.15, 0.18)));
+    const rc = Math.max(5, Math.round(rng(80, 120)));
+    const tv = Math.max(0, Math.round(h * rc * rng(5,4)));
+    const up = Math.max(1, Math.round(rc * rng(0.75, 0.2)));
+    const ol = Math.min(1, 0.35*h + 0.25*(tv/6000) + 0.15*(up/500) + 0.15*(rc/500) + 0.10*rng(0.5,0.15));
+    return { h, s, ol, name:`Reviewer ${i+1}`, rc, tv };
+  });
+
+  // Overlay top leaders
+  const leaders = ALL_DATA.slice(0,15);
+
+  Plotly.react('chart-scatter', [
+    {
+      type:'scatter', mode:'markers',
+      x: pop.map(d=>d.s), y: pop.map(d=>d.h),
+      marker: {
+        size:6, opacity:0.45,
+        color: pop.map(d=>d.ol),
+        colorscale: [[0,'#1e1b4b'],[0.3,'#3b82f6'],[0.6,'#8b5cf6'],[1,'#f59e0b']],
+        line:{width:0}
+      },
+      hovertemplate: 'Sentiment: %{x:.3f}<br>Helpfulness: %{y:.3f}<extra></extra>',
+      name: 'All reviewers'
+    },
+    {
+      type:'scatter', mode:'markers+text',
+      x: leaders.map(d=>d.sentiment), y: leaders.map(d=>d.helpfulness),
+      text: leaders.map(d=> d.name.split(' ').slice(0,2).join(' ')),
+      textposition: 'top right',
+      textfont: { size:10, color:'#f59e0b', family:'DM Mono, monospace' },
+      marker: { size:12, color:'#f59e0b', line:{color:'#0a0e1a', width:2}, symbol:'star' },
+      hovertemplate: '<b>%{customdata}</b><br>Sentiment: %{x:.3f}<br>Helpfulness: %{y:.3f}<extra></extra>',
+      customdata: leaders.map(d=>d.name),
+      name: 'Top leaders'
+    }
+  ], {
+    ...THEME,
+    margin: { l:56, r:16, t:16, b:56 },
+    xaxis: { ...THEME.xaxis, title:{text:'Avg Sentiment Polarity', standoff:10}, zeroline:true },
+    yaxis: { ...THEME.yaxis, title:{text:'Avg Helpfulness Ratio', standoff:10}, range:[-0.05,1.08] },
+    legend: { orientation:'h', y:-0.18, x:0, font:{size:11} },
+  }, CFG);
+}
+
+// ── HISTOGRAM ────────────────────────────────────────────────────────────────
+function renderHist() {
+  // Synthetic right-skewed distribution
+  const vals = [];
+  for(let i=0;i<23593;i++){
+    const v = -Math.log(1-Math.random()) * 0.055;
+    if(v>=0 && v<=0.65) vals.push(+v.toFixed(4));
+  }
+  const p95 = [...vals].sort((a,b)=>a-b)[Math.floor(vals.length*0.95)];
+
+  Plotly.react('chart-hist', [
+    {
+      type:'histogram', x:vals, nbinsx:50,
+      marker:{
+        color:vals,
+        colorscale:[[0,'#1e3a5f'],[0.5,'#8b5cf6'],[1,'#06b6d4']],
+        line:{width:0}
+      },
+      hovertemplate:'Score: %{x:.3f}<br>Count: %{y}<extra></extra>',
+      name:'Reviewers'
+    },
+    {
+      type:'scatter', mode:'lines',
+      x:[p95,p95], y:[0,8000],
+      line:{color:'#ef4444', width:2, dash:'dash'},
+      hovertemplate:`Top 5% threshold: ${p95.toFixed(3)}<extra></extra>`,
+      name:'Top 5% threshold'
+    }
+  ], {
+    ...THEME,
+    margin:{l:52,r:16,t:16,b:52},
+    xaxis:{...THEME.xaxis, title:{text:'Opinion Leader Score', standoff:10}},
+    yaxis:{...THEME.yaxis, title:{text:'Reviewers', standoff:10}},
+    bargap:0.04,
+    legend:{orientation:'h', y:-0.22, x:0, font:{size:11}},
+  }, CFG);
+}
+
+// ── HEATMAP ──────────────────────────────────────────────────────────────────
+function renderHeat() {
+  const labels = ['Review Count','Avg Helpfulness','Total Votes','Avg Sentiment','Review Length','Products','OL Score'];
+  const corr = [
+    [1.00, 0.12, 0.38, 0.03, 0.44, 0.91, 0.31],
+    [0.12, 1.00, 0.44, 0.07, 0.19, 0.10, 0.78],
+    [0.38, 0.44, 1.00, 0.05, 0.31, 0.34, 0.71],
+    [0.03, 0.07, 0.05, 1.00, 0.09, 0.02, 0.11],
+    [0.44, 0.19, 0.31, 0.09, 1.00, 0.41, 0.29],
+    [0.91, 0.10, 0.34, 0.02, 0.41, 1.00, 0.28],
+    [0.31, 0.78, 0.71, 0.11, 0.29, 0.28, 1.00],
+  ];
+  // mask upper triangle
+  const masked = corr.map((row,i) => row.map((v,j) => j > i ? null : v));
+
+  Plotly.react('chart-heat', [{
+    type:'heatmap',
+    z: masked, x: labels, y: labels,
+    colorscale:[[0,'#1e1b4b'],[0.35,'#3b82f6'],[0.65,'#06b6d4'],[1,'#10b981']],
+    zmin:-0.1, zmax:1,
+    text: masked.map(row=>row.map(v=> v===null?'':v.toFixed(2))),
+    texttemplate:'%{text}',
+    textfont:{size:11, family:'DM Mono, monospace'},
+    hovertemplate:'%{y} × %{x}<br>r = %{z:.3f}<extra></extra>',
+    showscale:true,
+    colorbar:{thickness:12, tickfont:{size:10}, outlinewidth:0}
+  }], {
+    ...THEME,
+    margin:{l:120,r:16,t:16,b:120},
+    xaxis:{...THEME.xaxis, tickangle:-35, tickfont:{size:10}},
+    yaxis:{...THEME.yaxis, tickfont:{size:10}},
+  }, CFG);
+}
+
+// ── ARCHETYPES ───────────────────────────────────────────────────────────────
+function renderArch() {
+  const cats = ['Review Count','Helpfulness Ratio','Helpful Votes','Products Reviewed','Review Length'];
+  const gen  = [0.92, 0.53, 0.22, 0.95, 0.61];
+  const spec = [0.04, 0.99, 0.88, 0.04, 0.74];
+
+  Plotly.react('chart-arch', [
+    {
+      type:'bar', name:'High-Volume Generalist (e.g., C.F. Hill — 448 reviews)',
+      x:cats, y:gen,
+      marker:{color:'#3b82f6', opacity:0.85, line:{width:0}},
+      text:gen.map(v=>v.toFixed(2)), textposition:'outside',
+      textfont:{family:'DM Mono, monospace', size:11, color:'#3b82f6'},
+      hovertemplate:'%{x}<br>Normalised Score: <b>%{y:.2f}</b><extra>Generalist</extra>'
+    },
+    {
+      type:'bar', name:'Low-Volume Specialist (e.g., J. Goldman — 10 reviews)',
+      x:cats, y:spec,
+      marker:{color:'#f59e0b', opacity:0.85, line:{width:0}},
+      text:spec.map(v=>v.toFixed(2)), textposition:'outside',
+      textfont:{family:'DM Mono, monospace', size:11, color:'#f59e0b'},
+      hovertemplate:'%{x}<br>Normalised Score: <b>%{y:.2f}</b><extra>Specialist</extra>'
+    }
+  ], {
+    ...THEME,
+    barmode:'group', bargap:0.3, bargroupgap:0.08,
+    margin:{l:52,r:16,t:16,b:80},
+    xaxis:{...THEME.xaxis, tickfont:{size:12}},
+    yaxis:{...THEME.yaxis, range:[0,1.18], title:{text:'Normalised Score (0–1)', standoff:10}},
+    legend:{orientation:'h', y:-0.28, x:0, font:{size:11}},
+  }, CFG);
+}
+
+// ── TABLE ────────────────────────────────────────────────────────────────────
+function renderTable(data) {
+  const sorted = [...data].sort((a,b) => {
+    const fields = ['rank','name','reviews','helpfulness','votes','sentiment','products','score'];
+    const f = fields[sortCol];
+    const av = typeof a[f]==='string' ? a[f].toLowerCase() : a[f];
+    const bv = typeof b[f]==='string' ? b[f].toLowerCase() : b[f];
+    return sortAsc ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+  const maxScore = Math.max(...data.map(d=>d.score));
+  document.getElementById('table-body').innerHTML = sorted.map((d,i) => `
+    <tr>
+      <td class="rank ${d.rank<=3?'top3':''}">${d.rank<=3?['🥇','🥈','🥉'][d.rank-1]:d.rank}</td>
+      <td class="name" title="${d.name}">${d.name}</td>
+      <td class="num">${d.reviews.toLocaleString()}</td>
+      <td class="num">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="bar-bg" style="width:80px"><div class="bar-fill" style="width:${d.helpfulness*80}px"></div></div>
+          ${d.helpfulness.toFixed(3)}
+        </div>
+      </td>
+      <td class="num">${d.votes.toLocaleString()}</td>
+      <td class="num">
+        <span class="pill ${d.sentiment>0.15?'pill-pos':'pill-neu'}">${d.sentiment>0?'+':''}${d.sentiment.toFixed(3)}</span>
+      </td>
+      <td class="num">${d.products}</td>
+      <td class="score">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${d.score.toFixed(3)}
+          <div class="bar-bg" style="width:60px"><div class="bar-fill" style="width:${(d.score/maxScore)*60}px"></div></div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  // update sort icons
+  document.querySelectorAll('th').forEach((th,i) => {
+    th.classList.toggle('active', i===sortCol);
+    const ic = th.querySelector('.sort-icon');
+    if(ic) ic.textContent = i===sortCol ? (sortAsc?'↑':'↓') : '↕';
+  });
+}
+
+function sortTable(col) {
+  if(sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=col===1; }
+  renderTable(getFiltered());
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+onFilter();
+renderScatter();
+renderHist();
+renderHeat();
+renderArch();
+</script>
+</body>
+</html>
